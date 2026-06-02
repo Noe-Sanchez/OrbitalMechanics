@@ -1,5 +1,5 @@
 # OrbitalMechanics
-ROS2 rviz simulation of a satellite making a 3D orbit around earth, including orbital elements calculation, RK4 physics integration and the 6 directions of thrust along the normal, prograde and radial vectors.
+ROS2 rviz simulation of a satellite making a 3D orbit around earth, including orbital elements calculation, RK4 physics integration and the 6 directions of thrust along the normal, prograde and radial vectors. Addionally, orbital element based control is implemented.
 
 ## Showcase images
 ![OrbitalMechanics](https://github.com/Noe-Sanchez/OrbitalMechanics/blob/dev/images/inclination.png)
