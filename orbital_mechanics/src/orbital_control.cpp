@@ -26,7 +26,7 @@ class OrbitalController : public rclcpp::Node{
       current_elements_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
       
       // Let's set a default target: Slightly higher orbit, circular, equatorial
-      target_elements_ = {6371000.0 + 500000.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+      target_elements_ = {7000000.0, 0.0, 0.0, 0.0, 0.0, 0.0};
       has_state_ = false;
 
       // 2. Publishers
@@ -267,6 +267,9 @@ class OrbitalController : public rclcpp::Node{
 
       // Desired element rates
       Eigen::Matrix<double, 6, 1> x_dot_desired = K * delta_x;
+
+      // Print B
+      std::cout << "Control Matrix B:\n" << B << std::endl;
 
       // Solve for a_rtn: Least squares solution to B * u = x_dot_desired
       a_rtn = B.completeOrthogonalDecomposition().solve(x_dot_desired);

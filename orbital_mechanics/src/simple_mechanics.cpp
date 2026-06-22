@@ -24,6 +24,8 @@ struct KeplerianElements {
 
 class OrbitalSimulator : public rclcpp::Node{
   public: OrbitalSimulator() : Node("orbital_simulator"){
+    this->declare_parameter<bool>("control_in_eci", true);
+  
     // 1. Publishers and Subscribers
     odom_pub_        = this->create_publisher<nav_msgs::msg::Odometry>("spacecraft/state", 10);
     path_pub_        = this->create_publisher<nav_msgs::msg::Path>("spacecraft/path", 10);
@@ -33,11 +35,13 @@ class OrbitalSimulator : public rclcpp::Node{
     elements_pub_    = this->create_publisher<std_msgs::msg::Float64MultiArray>("spacecraft/orbital_elements", 10);
     
     // Control interface: expects an acceleration vector (m/s^2)
-    ctrl_sub_ = this->create_subscription<geometry_msgs::msg::Vector3>(
+    /*ctrl_sub_ = this->create_subscription<geometry_msgs::msg::Vector3>(
         "spacecraft/control_accel", 10,
         [this](const geometry_msgs::msg::Vector3::SharedPtr msg) {
             a_ctrl_ << msg->x, msg->y, msg->z;
         });
+    */
+    ctrl_sub_ = this->create_subscription<geometry_msgs::msg::Vector3>("spacecraft/control_accel", 10, std::bind(&OrbitalSimulator::rtn_accel_callback, this, std::placeholders::_1));
    
     // 2. Initial Conditions (Low Earth Orbit approx 400km altitude)
     // Earth standard gravitational parameter (m^3/s^2)
@@ -109,6 +113,41 @@ class OrbitalSimulator : public rclcpp::Node{
   }
 
   private:
+    void rtn_accel_callback(const geometry_msgs::msg::Vector3::SharedPtr msg){
+      // Convert RTN acceleration command to ECI frame
+      //Eigen::Vector3d a_rtn(msg->x, msg->y, msg->z);
+      //Eigen::Matrix3d R_ECI_RTN = calculateRtnToEci(r_, v_);
+      //a_ctrl_ = R_ECI_RTN * a_rtn;
+      //a_ctrl_ << msg->x, msg->y, msg->z;
+      if (this->get_parameter("control_in_eci").as_bool()) {
+        a_ctrl_ << msg->x, msg->y, msg->z;
+      } else {
+	Eigen::Vector3d a_rtn(msg->x, msg->y, msg->z);
+	Eigen::Matrix3d R_ECI_RTN = calculateRtnToEci(r_, v_);
+	a_ctrl_ = R_ECI_RTN * a_rtn;
+      }
+    }
+
+    Eigen::Matrix3d calculateRtnToEci(const Eigen::Vector3d& r, const Eigen::Vector3d& v){
+      // Radial unit vector (R)
+      Eigen::Vector3d u_R = r.normalized();
+      
+      // Normal unit vector (N) - perpendicular to orbital plane
+      Eigen::Vector3d h = r.cross(v); // Angular momentum vector
+      Eigen::Vector3d u_N = h.normalized();
+      
+      // Transverse/Tangential unit vector (T) - completes right-handed system
+      Eigen::Vector3d u_T = u_N.cross(u_R);
+
+      // Rotation matrix: Columns are the RTN basis vectors expressed in ECI
+      Eigen::Matrix3d R_ECI_RTN;
+      R_ECI_RTN.col(0) = u_R;
+      R_ECI_RTN.col(1) = u_T;
+      R_ECI_RTN.col(2) = u_N;
+
+      return R_ECI_RTN;
+    }
+
     KeplerianElements cartesianToKeplerian(const Eigen::Vector3d& r, const Eigen::Vector3d& v){
       KeplerianElements elem;
       
